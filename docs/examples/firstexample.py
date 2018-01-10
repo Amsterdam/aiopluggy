@@ -1,4 +1,4 @@
-import aiopluggy
+import aiopluggy, asyncio
 
 hookspec = aiopluggy.HookspecMarker("myproject")
 hookimpl = aiopluggy.HookimplMarker("myproject")
@@ -16,8 +16,8 @@ class MySpec(object):
 class Plugin_1(object):
     """A hook implementation namespace.
     """
-    @hookimpl
-    def myhook(self, arg1, arg2):
+    @hookimpl.asyncio
+    async def myhook(self, arg1, arg2):
         print("inside Plugin_1.myhook()")
         return arg1 + arg2
 
@@ -31,14 +31,19 @@ class Plugin_2(object):
         return arg1 - arg2
 
 
-# create a manager and add the spec
-pm = aiopluggy.PluginManager("myproject")
-pm.add_hookspecs(MySpec)
+async def main():
+    # create a manager and add the spec
+    pm = aiopluggy.PluginManager("myproject")
+    pm.add_hookspecs(MySpec)
 
-# register plugins
-pm.register(Plugin_1())
-pm.register(Plugin_2())
+    # register plugins
+    await pm.register(Plugin_1())
+    await pm.register(Plugin_2())
 
-# call our `myhook` hook
-results = pm.hooks.myhook(arg1=1, arg2=2)
-print(results)
+    # call our `myhook` hook
+    results = await pm.hooks.myhook(arg1=1, arg2=2)
+    values = [ result.value for result in results ]
+    print(values)
+
+
+asyncio.get_event_loop().run_until_complete(main())

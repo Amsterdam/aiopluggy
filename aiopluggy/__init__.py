@@ -11,11 +11,12 @@ from .multicall import (
 )
 
 
-__version__ = '0.1.0'
+VERSION = '0.1.3rc2'
 
 __all__ = [
-    "PluginManager", "PluginValidationError", "HookCallError",
-    "HookspecMarker", "HookimplMarker"
+    'HookimplMarker', 'HookspecMarker',
+    'PluginManager', 'PluginValidationError',
+    'HookCallError', 'VERSION'
 ]
 
 
@@ -51,7 +52,7 @@ class PluginManager(object):
             spec_flag_set = self._get_hookspec_flag_set(namespace, name)
             if spec_flag_set is None:
                 continue
-            hc: HookCaller = getattr(self.hooks, name, None)
+            hc = getattr(self.hooks, name, None)
             if hc is None:
                 hc = HookCaller(name)
                 setattr(self.hooks, name, hc)
@@ -89,7 +90,7 @@ class PluginManager(object):
             hookimpl = HookImpl(
                 namespace, plugin_name, name, hookimpl_flagset
             )
-            hc: HookCaller = getattr(self.hooks, name, None)
+            hc = getattr(self.hooks, name, None)
             if hc is None:
                 hc = HookCaller(name)
                 setattr(self.hooks, name, hc)

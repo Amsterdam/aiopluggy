@@ -32,6 +32,11 @@ class Result(object):
             ex = self._exc_info
             raise ex[1].with_traceback(ex[2])
 
+    @value.setter
+    def value(self, value):
+        self._exc_info = None
+        self._value = value
+
 
 # noinspection PyBroadException
 async def multicall_parallel(wrappers,

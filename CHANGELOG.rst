@@ -7,7 +7,7 @@ Changes since Pluggy:
 *   Removed deprecated code, including the legacy ``__multicall__`` parameter
     handling.
 *   Renamed from **pluggy** to **aiopluggy**
-*   Removed compatibility with Python versions \<3.6.
+*   Removed compatibility with Python versions before 3.5.
 *   Updated documentation.
 *   Stripped much of the original CI stuff (tox, travis-ci) because I was in a
     hurry to get some MVP running. Will probably be re-introduced later.
