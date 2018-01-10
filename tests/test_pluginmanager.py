@@ -22,10 +22,14 @@ def test_add_hookspecs_from_class(pm: PluginManager):
     class HookSpec(object):
         @classmethod
         @hookspec
-        def some_method(cls, arg1, arg2):
+        def some_method1(cls, arg1, arg2):
+            pass
+        @hookspec
+        def some_method2(self, arg1, arg2):
             pass
     pm.add_hookspecs(HookSpec)
-    assert pm.hooks.some_method.spec.argnames == ('arg1', 'arg2')
+    assert pm.hooks.some_method1.spec.argnames == ('arg1', 'arg2')
+    assert pm.hooks.some_method2.spec.argnames == ('arg1', 'arg2')
 
 
 def test_add_hookspecs_from_object(pm: PluginManager):
@@ -41,9 +45,6 @@ def test_add_hookspecs_from_module(pm: PluginManager):
     import plugin_namespace as module
     pm.add_hookspecs(module)
     assert pm.hooks.function_spec.spec.argnames == ('arg1', 'arg2')
-    assert pm.hooks.callable_spec.spec.argnames == ('arg1', 'arg2')
-    assert pm.hooks.class1_spec.spec.argnames == ('arg1', 'arg2')
-    assert pm.hooks.class2_spec.spec.argnames == ('arg1', 'arg2')
 
 
 @pytest.mark.asyncio
@@ -81,7 +82,6 @@ async def test_add_hookimpls_from_module(pm: PluginManager):
     import plugin_namespace as module
     await pm.register(module)
     assert len(pm.hooks.function_impl.implementations) == 1
-    assert len(pm.hooks.callable_impl.implementations) == 1
     assert len(pm.hooks.class1_impl.implementations) == 1
     assert len(pm.hooks.class2_impl.implementations) == 1
     assert len(pm.hooks.example_plugin_impl.implementations) == 1

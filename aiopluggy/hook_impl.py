@@ -10,9 +10,9 @@ class HookCallError(Exception):
 
 
 class HookImpl(object):
-    def __init__(self, plugin, plugin_name, func, flag_set):
-        self.function = func
-        self.argnames, self.kwargnames = varnames(self.function)
+    def __init__(self, plugin, plugin_name, name, flag_set):
+        self.function = getattr(plugin, name)
+        self.argnames, self.kwargnames = varnames(plugin, name)
         self.plugin = plugin
         self.plugin_name = plugin_name
         self.__dict__.update(HookimplMarker.set2dict(flag_set))

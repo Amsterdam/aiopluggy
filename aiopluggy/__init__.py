@@ -86,9 +86,8 @@ class PluginManager(object):
             hookimpl_flagset = self._get_hookimpl_flag_set(namespace, name)
             if hookimpl_flagset is None:
                 continue
-            method = getattr(namespace, name)
             hookimpl = HookImpl(
-                namespace, plugin_name, method, hookimpl_flagset
+                namespace, plugin_name, name, hookimpl_flagset
             )
             hc: HookCaller = getattr(self.hooks, name, None)
             if hc is None:
@@ -103,26 +102,18 @@ class PluginManager(object):
 
     def _get_hookspec_flag_set(self, namespace, name):
         thing = getattr(namespace, name)
-        if not callable(thing):
+        if not inspect.isroutine(thing):
             return None
         flag_set = getattr(thing, self.specmarker, None)
-        if flag_set is None and inspect.isclass(thing):
-            flag_set = getattr(thing.__init__, self.specmarker, None)
-        if flag_set is None and not inspect.isclass(thing) and \
-                hasattr(thing, '__call__'):
-            flag_set = getattr(thing.__call__, self.specmarker, None)
         return flag_set
 
     def _get_hookimpl_flag_set(self, plugin, name):
         thing = getattr(plugin, name)
-        if not callable(thing):
-            return
+        if not inspect.isroutine(thing) and not inspect.isclass(thing):
+            return None
         flag_set = getattr(thing, self.implmarker, None)
         if flag_set is None and inspect.isclass(thing):
             flag_set = getattr(thing.__init__, self.implmarker, None)
-        if flag_set is None and not inspect.isclass(thing) and \
-                hasattr(thing, '__call__'):
-            flag_set = getattr(thing.__call__, self.implmarker, None)
         if flag_set is None and self.implprefix and name.startswith(self.implprefix):
             flag_set = set()
         return flag_set
@@ -156,8 +147,7 @@ class Spec(object):
     def __init__(self, namespace, name, flag_set):
         self.namespace = namespace
         self.name = name
-        func = getattr(namespace, name)
-        self.argnames, self.kwargnames = varnames(func)
+        self.argnames, self.kwargnames = varnames(namespace, name)
         self.__dict__.update(HookspecMarker.set2dict(flag_set))
 
 

@@ -38,8 +38,8 @@ html_theme = 'alabaster'
 html_theme_options = {
     # 'logo': 'img/plug.png',
     # 'logo_name': 'true',
-    'description': 'The `pytest` plugin system',
-    'github_user': 'pytest-dev',
+    'description': 'The asyncio plugin system',
+    'github_user': 'pieterb',
     'github_repo': 'aiopluggy',
     'github_button': 'true',
     'github_banner': 'true',
@@ -68,4 +68,4 @@ texinfo_documents = [
 ]
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {'https://docs.python.org/3.6/': None}

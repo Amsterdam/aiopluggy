@@ -2,14 +2,15 @@ import inspect
 import warnings
 
 
-def varnames(func):
+def varnames(namespace, name):
     """Return tuple of positional and keywrord argument names for a function,
     method, class or callable.
 
     In case of a class, its ``__init__`` method is considered.
     For methods the ``self`` parameter is not included.
     """
-    spec = inspect.getfullargspec(func)
+    thing = getattr(namespace, name)
+    spec = inspect.getfullargspec(thing)
     # if spec.varargs or spec.varkw:
     #     raise Exception(
     #         "%s: Variable (keyword) arguments not allowed in hooks." %
@@ -23,14 +24,14 @@ def varnames(func):
         defaults = ()
 
     # strip any implicit instance arg
-    if not inspect.isfunction(func) and not inspect.isbuiltin(func) and (
-        inspect.ismethod(func) or inspect.isclass(func) or callable(func)
+    if inspect.isclass(thing) or inspect.ismethod(thing) or (
+        inspect.isclass(namespace) and inspect.isfunction(thing)
     ):
         if args[0] not in ('self', 'cls'):
             warnings.warn(
                 "%s: expected first argument to be called 'self' or 'cls'. "
                 "Found '%s' instead." % (
-                    format_def(func), args[0]
+                    format_def(thing), args[0]
                 )
             )
         args = args[1:]

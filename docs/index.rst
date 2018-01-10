@@ -1,20 +1,18 @@
-``aiopluggy``
-==========
+aiopluggy
+=========
 
-The ``pytest`` plugin system
-****************************
-``aiopluggy`` is the crystallized core of `plugin management and hook
-calling`_ for `pytest`_.
+``aiopluggy`` is a plugin manager for (partly) asynchronous plugins in an
+asynchronous application. For example, it allows you to write an `aiohttp`_
+service with a pluggable storage back-end, and a set of asynchronous plugins for
+MySQL, SQLServer, Postgres etcetera. In essence, ``aiopluggy`` enables function
+`hooking`_ so you can build "pluggable" systems.
 
-In fact, ``pytest`` is itself composed as a set of ``aiopluggy`` plugins
-which are invoked in sequence according to a well defined set of protocols.
-Some `200+ plugins`_ use ``aiopluggy`` to extend and customize ``pytest``'s default behaviour.
-
-In essence, ``aiopluggy`` enables function `hooking`_ so you can build "pluggable" systems.
+``aiopluggy`` jumpstarted reusing much of the code in `pluggy`_, the plugin
+*manager used by `pytest`_.
 
 How's it work?
 --------------
-A `plugin` is a `namespace`_ which defines hook functions.
+A *plugin* is a `namespace`_ which defines hook functions.
 
 ``aiopluggy`` manages *plugins* by relying on:
 
@@ -674,6 +672,8 @@ in your project you should thus use a dependency restriction like
 .. hyperlinks
 .. _pytest:
     http://pytest.org
+.. _pluggy:
+    https://pluggy.readthedocs.io/en/latest/
 .. _request-response pattern:
     https://en.wikipedia.org/wiki/Request%E2%80%93response
 .. _publish-subscribe:
