@@ -193,3 +193,13 @@ html_theme_options = {
 # }
 
 html_static_path = ['_static']
+
+# Optional, for readthedocs.org.
+# See also: <http://docs.readthedocs.io/en/latest/vcs.html>
+html_context = {
+    "display_github": True, # Integrate GitHub
+    "github_user": "Amsterdam", # Username
+    "github_repo": "aiopluggy", # Repo name
+    "github_version": "master", # Version
+    "conf_py_path": "/docs/", # Path in the checkout to the docs root
+}
