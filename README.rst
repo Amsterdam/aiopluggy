@@ -1,12 +1,14 @@
-aiopluggy - A minimalist production ready plugin system
-=======================================================
+aiopluggy - A minimalist asyncio-ready plugin system
+====================================================
+.. image:: https://readthedocs.org/projects/aiopluggy/badge/?version=latest
+    :target: http://aiopluggy.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
 
 Please `read the docs`_ to learn more!
 
 
 A definitive example
 --------------------
-
 .. code-block:: python
 
     import aiopluggy, asyncio
