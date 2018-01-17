@@ -3,7 +3,7 @@ SPHINXOPTS    = -d .doctrees
 SPHINXBUILD   = sphinx-build
 AUTOBUILD     = sphinx-autobuild
 SOURCEDIR     = .
-BUILDDIR      = ../docs
+BUILDDIR      = ../gh-pages
 
 .PHONY = docs server clean invclean
 
@@ -13,7 +13,7 @@ docs:
 
 
 server:
-	@$(AUTOBUILD) "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) --watch ../src
+	@$(AUTOBUILD) "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) --watch ../aiopluggy --watch ./
 
 
 clean:

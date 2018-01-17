@@ -1,4 +1,3 @@
-import asyncio
 import pytest
 
 from aiopluggy import *
@@ -8,8 +7,23 @@ hookspec = HookspecMarker("example")
 hookimpl = HookimplMarker("example")
 
 
-def test_spec_conflicting():
+# noinspection PyStatementEffect
+def test_spec_qualifiers():
+    hookspec.first_result
+    hookspec.replay
+    hookspec.reraise
+    hookspec.sync
     with pytest.raises(AttributeError):
-        hookspec.first_result.historic
+        # noinspection PyUnresolvedReferences
+        hookspec.non_existing
+
+
+# noinspection PyStatementEffect
+def test_impl_qualifiers():
+    hookimpl.try_first
+    hookimpl.try_last
+    hookimpl.dont_await
+    hookimpl.before
     with pytest.raises(AttributeError):
-        hookimpl.try_first.try_last
+        # noinspection PyUnresolvedReferences
+        hookimpl.non_existing

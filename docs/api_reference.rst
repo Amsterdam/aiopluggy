@@ -5,6 +5,6 @@ Api Reference
 
 .. autoclass:: aiopluggy.PluginManager
 
-.. autoclass:: aiopluggy.Result
+.. autoclass:: aiopluggy.multicall.Result
 
-.. autoclass:: aiopluggy.PluginValidationError
+.. autoclass:: aiopluggy.HookValidationError

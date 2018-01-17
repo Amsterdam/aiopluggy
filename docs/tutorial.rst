@@ -6,20 +6,24 @@ Tutorial
 
 How does it work?
 -----------------
-A *plugin* is a :ref:`namespace <tut-scopes>` which defines hook functions.
+First, some terminalogy used in this document:
 
-``aiopluggy`` manages *plugins* by relying on:
+*hook function*:
+    a callable that can be called through an *hook caller*
+*plugin*:
+    a :ref:`namespace <tut-scopes>` which contains a set of *hook functions*
+*hook specification* or *hookspec*:
+    a callable that declares the signature of a hook, similar to an
+    :func:`~abc.abstractmethod`
+*plugin specification* or *pluginspec*:
+    a :ref:`namespace <tut-scopes>` which contains a set of *hookspecs*
+*hook caller*:
+    a call loop which calls *hook functions* and returns the results
 
-- hook *specifications* - which specify function signatures
-- hook *implementations* - which implement such functions
-- the *hook caller* - a call loop which collects results
+For each registered *hook specification*, there may be zero or more *hook
+functions*.
 
-where for each registered hook *specification*, a *hook call* will invoke up to
-``N`` registered hook *implementations*.
-
-``aiopluggy`` accomplishes all this by implementing a `request-response pattern`_ using *function*
-subscriptions and can be thought of and used as a rudimentary busless `publish-subscribe`_
-event system.
+``aiopluggy`` can be thought of and used as a rudimentary busless *publish-subscribe* event system.
 
 ``aiopluggy``'s approach is meant to let a designer think carefuly about which objects are
 explicitly needed by an extension writer. This is in contrast to subclass-based extension
@@ -67,10 +71,10 @@ value, and return this single value (see :ref:`first_result`).
 
 .. _marking_implementations:
 
-Marking hook implementations
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Marking hook functions
+^^^^^^^^^^^^^^^^^^^^^^
 :class:`~aiopluggy.HookimplMarker` decorators are used to *mark* functions as
-*hook implementations*. For example::
+*hook functions*. For example::
 
     from aiopluggy import HookimplMarker
 
@@ -93,8 +97,8 @@ you to have distinct sets of hooks in your program, each managed by its own
 plugin manager instance.
 
 
-Asynchronous hook implementations
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Asynchronous hook functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Hook implementations can be asynchronous::
 
     @hookimpl
@@ -107,49 +111,6 @@ Hook implementations can be asynchronous::
     <inspect.iscoroutinefunction>` by the :class:`~aiopluggy.PluginManager`,
     and :ref:`awaited <await>` at call-time. This feature is the whole
     *raison-d’être* for the ``aiopluggy`` package, really.
-
-
-Hook wrappers
-^^^^^^^^^^^^^
-Normal hooks functions can not be generators, ie. they may only
-:ref:`return <return>` results, and never :ref:`yield <yield>` anything.
-
-A hook function that *does* yield is treated by the
-:class:`~aiopluggy.PluginManager` as a **hook wrapper**. This means that the
-function will be called to *wrap* (or surround) all other normal hook function
-calls. A **hook wrapper** can thus execute some code ahead of, and after, the
-execution of all corresponding non-wrapppers.
-
-Much in the same way as a :func:`context manager <contextlib.contextmanager>`, a
-*hook wrapper* must be implemented as generator function with a single
-:ref:`yield <yield>` in its body::
-
-    @hookimpl
-    def some_hook(arg1, arg2):
-        """
-        Wrap calls to ``some_hook()`` implementations, which may raise an exception.
-        """
-        if config.debug:
-            print("Pre-hook argument values: %r, %r" % (arg1, arg2))
-
-        # all corresponding hookimpls are invoked here:
-        results = yield
-
-        for result in results:
-            try:
-                result.value
-            except:
-                result.value = None
-
-        if config.debug:
-            print("Post-hook argument values: %r, %r" % (arg1, arg2))
-
-The generator is `sent`_ a list of :class:`~aiopluggy.Result` objects which is
-assigned in the ``yield`` expression and used to update the ``config``
-dictionary.
-
-Hook wrappers can not *return* results (as per generator function semantics);
-they can only modify them by changing the :attr:``Result.value`` attribute.
 
 
 Hook implementation qualifiers
@@ -165,7 +126,7 @@ qualifier::
 The :ref:`try_first` qualifier instructs the plugin manager to try this
 implementation before all other implementations not marked as :ref:`try_first`.
 
-Currently, ``aiopluggy`` supports the following qualifiers for hook implementations:
+Currently, ``aiopluggy`` supports the following qualifiers for hook functions:
 
 -   :ref:`try_first` and :ref:`try_last`
 -   ``dont_await``
@@ -261,6 +222,45 @@ For this reason, ``aiopluggy`` provides the ``dont_await`` qualifier::
 Now, the special semantics are more explicit.
 
 
+``wrapper``
+^^^^^^^^^^^
+Treat the function as a **hook wrapper**. This means that the
+function will be called to *wrap* (or surround) all other normal hook function
+calls. A **hook wrapper** can thus execute some code ahead of, and after, the
+execution of all corresponding non-wrapppers.
+
+Much in the same way as a :func:`context manager <contextlib.contextmanager>`, a
+*hook wrapper* must be implemented as generator function with a single
+:ref:`yield <yield>` in its body::
+
+    @hookimpl.wrapper
+    def some_hook(arg1, arg2):
+        """
+        Wrap calls to ``some_hook()`` implementations, which may raise an exception.
+        """
+        if config.debug:
+            print("Pre-hook argument values: %r, %r" % (arg1, arg2))
+
+        # all corresponding hookimpls are invoked here:
+        results = yield
+
+        for result in results:
+            try:
+                result.value
+            except:
+                result.value = None
+
+        if config.debug:
+            print("Post-hook argument values: %r, %r" % (arg1, arg2))
+
+The generator is :func:`sent <__send__>` a list of :class:`~aiopluggy.Result`
+objects which is assigned in the ``yield`` expression and used to update the
+``config`` dictionary.
+
+Hook wrappers can not *return* results (as per generator function semantics);
+they can only modify them by changing the :attr:``Result.value`` attribute.
+
+
 Hook specifications
 -------------------
 A *hook specification* is a definition used to validate each
@@ -329,10 +329,16 @@ then ``None``.
 This can be useful for optimizing a call loop for which you are only
 interested in a single core *hookimpl*.
 
+.. note::
+
+    Asynchronous **hook functions** are normally executed in parallel. If you
+    set the ``first_result`` qualifier, these functions will be called *one at a
+    time*, which may result in longer wall-times for the hook call.
+
 
 ``replay``
 ^^^^^^^^^^
-Marking a *hookspec* as with the ``replay`` qualifier means that calls to this
+Marking a *hookspec* with the ``replay`` qualifier means that calls to this
 hook are remembered. When a new hook function is registered *after* the hook has
 been called one or more times, these calls will be replayed to the newly
 registered hook function. This turns out to be particularly useful when dealing
@@ -348,6 +354,13 @@ This has two repercussions:
 -   these hook functions *can not* return a result to the caller.
 -   :meth:`PluginManager.register` returns a *future* that must be awaited,
     because some of the registered hook functions may be asynchronous.
+
+
+``sync``
+^^^^^^^^
+Marking a **hookspec** with the ``sync`` qualifier means that all corresponding
+**hook functions** *must* be *synchronous*. When called, the **hook caller**
+result must *not* be awaited.
 
 
 More about namespaces

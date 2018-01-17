@@ -1,11 +1,11 @@
 """ Call loop machinery.
 """
-import sys
 import asyncio
+import sys
 
 
-def _raise_wrapfail(wrap_controller, msg):
-    co = wrap_controller.gi_code
+def _raise_wrapfail(generator, msg):
+    co = generator.gi_code
     raise RuntimeError(
         "wrap_controller at %r %s:%d %s" % (
             co.co_name, co.co_filename, co.co_firstlineno, msg
@@ -38,146 +38,128 @@ class Result(object):
         self._value = value
 
 
-# noinspection PyBroadException
-async def multicall_parallel(wrappers,
-                             implementations,
-                             caller_kwargs,
-                             return_exceptions=False):
-    """Execute a call into multiple python methods.
-
-    ``caller_kwargs`` comes from HookCaller.__call__().
-
-    """
-    # __tracebackhide__ = True
-    result = [None] * len(implementations)
-    teardowns = []
-    try:
-
-        for wrapper in reversed(wrappers):
-            args = wrapper.filtered_args(caller_kwargs)
-            if wrapper.is_asyncio:
-                try:
-                    gen = wrapper.function(*args)
-                    await gen.__anext__()  # first yield
-                    teardowns.append((True, gen))
-                except StopAsyncIteration:
-                    _raise_wrapfail(gen, "did not yield")
+async def _call_befores(hookimpls, caller_kwargs):
+    awaitables = []
+    # noinspection PyBroadException
+    try:  # <-- to cancel any unfinished awaitables
+        for hookimpl in reversed(hookimpls):
+            kwargs = hookimpl.filtered_args(caller_kwargs)
+            if hookimpl.is_async:
+                awaitables.append(asyncio.ensure_future(
+                    hookimpl.function(**kwargs)
+                ))
             else:
-                try:
-                    gen = wrapper.function(*args)
-                    next(gen)   # first yield
-                    teardowns.append((False, gen))
-                except StopIteration:
-                    _raise_wrapfail(gen, "did not yield")
-
-        awaitables = []
-        current_index = 0
-        for implementation in reversed(implementations):
-            args = implementation.filtered_args(caller_kwargs)
-            if implementation.is_asyncio:
-                awaitables.append([
-                    current_index,
-                    implementation.function(*args)
-                ])
-            else:
-                try:
-                    res = implementation.function(*args)
-                except BaseException:
-                    if not return_exceptions:
-                        raise
-                    result[current_index] = Result(exc_info=sys.exc_info())
-                else:
-                    result[current_index] = Result(res)
-            current_index += 1
+                hookimpl.function(**kwargs)
         if len(awaitables) > 0:
-            try:
-                coros = [a[1] for a in awaitables]
-                gathered = await asyncio.gather(
-                    *coros,
-                    return_exceptions=return_exceptions
-                )
-            except BaseException as e:
-                print(repr(e))
-                raise
-            for i in range(len(gathered)):
-                res = gathered[i]
-                result_index = awaitables[i][0]
-                result[result_index] = (
-                    Result(exc_info=(res.__class__, res, None))
-                    if return_exceptions and isinstance(res, BaseException)
-                    else Result(res)
-                )
-
-    finally:
-
-        # run all wrapper post-yield blocks
-        for is_asyncio, gen in reversed(teardowns):
-            if is_asyncio:
-                try:
-                    await gen.asend(result)
-                    _raise_wrapfail(gen, "has second yield")
-                except StopAsyncIteration:
-                    pass
-            else:
-                try:
-                    gen.send(result)
-                    _raise_wrapfail(gen, "has second yield")
-                except StopIteration:
-                    pass
-
-    return result
+            for f in asyncio.as_completed(awaitables):
+                await f
+    except Exception:
+        for a in awaitables:
+            if not a.done():
+                a.cancel()
+        raise
 
 
-async def multicall_first(wrappers, implementations, caller_kwargs):
+def _call_befores_sync(hookimpls, caller_kwargs):
+    # noinspection PyBroadException
+    for hookimpl in reversed(hookimpls):
+        kwargs = hookimpl.filtered_args(caller_kwargs)
+        hookimpl.function(**kwargs)
+
+
+async def multicall_parallel(before, functions, caller_kwargs, reraise):
     """Execute a call into multiple python methods.
 
     ``caller_kwargs`` comes from HookCaller.__call__().
 
     """
     # __tracebackhide__ = True
-    result = None
-    teardowns = []
-    try:
-
-        for wrapper in reversed(wrappers):
-            args = wrapper.filtered_args(caller_kwargs)
-            if wrapper.is_asyncio:
-                try:
-                    gen = wrapper.function(*args)
-                    await gen.__anext__()  # first yield
-                    teardowns.append((True, gen))
-                except StopAsyncIteration:
-                    _raise_wrapfail(gen, "did not yield")
+    await _call_befores(before, caller_kwargs=caller_kwargs)
+    awaitables = []
+    # noinspection PyBroadException
+    try:  # <-- to cancel any unfinished awaitables
+        for hookimpl in reversed(functions):
+            kwargs = hookimpl.filtered_args(caller_kwargs)
+            if hookimpl.is_async:
+                awaitables.append(asyncio.ensure_future(
+                    hookimpl.function(**kwargs)
+                ))
+            elif reraise:
+                yield hookimpl.function(**kwargs)
             else:
+                # noinspection PyBroadException
                 try:
-                    gen = wrapper.function(*args)
-                    next(gen)   # first yield
-                    teardowns.append((False, gen))
-                except StopIteration:
-                    _raise_wrapfail(gen, "did not yield")
+                    yield Result(hookimpl.function(**kwargs))
+                except Exception:
+                    yield Result(exc_info=sys.exc_info())
+        if len(awaitables) > 0:
+            for f in asyncio.as_completed(awaitables):
+                if reraise:
+                    yield await f
+                else:
+                    # noinspection PyBroadException
+                    try:
+                        yield Result(await f)
+                    except Exception:
+                        yield Result(exc_info=sys.exc_info())
+    except Exception:
+        for a in awaitables:
+            if not a.done():
+                a.cancel()
+        raise
 
-        for implementation in reversed(implementations):
-            args = implementation.filtered_args(caller_kwargs)
-            result = implementation.function(*args)
-            if implementation.is_asyncio:
-                result = await result
-            if result is not None:
-                break
-    finally:
 
-        # run all wrapper post-yield blocks
-        for is_asyncio, gen in reversed(teardowns):
-            if is_asyncio:
-                try:
-                    await gen.asend(result)
-                    _raise_wrapfail(gen, "has second yield")
-                except StopAsyncIteration:
-                    pass
-            else:
-                try:
-                    gen.send(result)
-                    _raise_wrapfail(gen, "has second yield")
-                except StopIteration:
-                    pass
+def multicall_parallel_sync(before, functions, caller_kwargs, reraise):
+    """Execute a call into multiple python methods.
 
-    return result
+    Called from :func:`HookCaller.__call__`.
+
+    """
+    # __tracebackhide__ = True
+    _call_befores_sync(before, caller_kwargs=caller_kwargs)
+    for hookimpl in reversed(functions):
+        kwargs = hookimpl.filtered_args(caller_kwargs)
+        if reraise:
+            yield hookimpl.function(**kwargs)
+        else:
+            # noinspection PyBroadException
+            try:
+                yield Result(hookimpl.function(**kwargs))
+            except Exception:
+                yield Result(exc_info=sys.exc_info())
+
+
+async def multicall_first(before, functions, caller_kwargs, reraise):
+    """Execute a call into multiple python methods.
+
+    Called from :func:`HookCaller.__call__`.
+
+    """
+    # __tracebackhide__ = True
+    assert reraise == True
+    await _call_befores(before, caller_kwargs=caller_kwargs)
+    for hookimpl in reversed(functions):
+        kwargs = hookimpl.filtered_args(caller_kwargs)
+        result = hookimpl.function(**kwargs)
+        if hookimpl.is_async:
+            result = await result
+        if result is not None:
+            return result
+    return None
+
+
+def multicall_first_sync(before, functions, caller_kwargs, reraise):
+    """Execute a call into multiple python methods.
+
+    Called from :func:`HookCaller.__call__`.
+
+    """
+    # __tracebackhide__ = True
+    assert reraise == True
+    _call_befores_sync(before, caller_kwargs=caller_kwargs)
+    for hookimpl in reversed(functions):
+        kwargs = hookimpl.filtered_args(caller_kwargs)
+        result = hookimpl.function(**kwargs)
+        if result is not None:
+            return result
+    return None
