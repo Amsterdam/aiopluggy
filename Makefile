@@ -1,15 +1,19 @@
-.PHONY: uninstall install release sdist clean
+.PHONY: _upgrade_setuptools uninstall install release sdist clean
 
 RM = rm -rf
 PYTHON = python3.6
 
 
-uninstall:
+_upgrade_setuptools:
+	pip install --upgrade --upgrade-strategy eager setuptools
+
+
+uninstall: _upgrade_setuptools
 	-pip uninstall -y aiopluggy
 
 
 install: uninstall
-	pip install -e .[docs,test]
+	pip install -e .[dev,docs,test]
 
 
 sdist: clean

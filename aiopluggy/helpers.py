@@ -1,14 +1,7 @@
 import inspect
 
 
-def format_def(func):
-    return "%s%s" % (
-        func.__name__,
-        str(inspect.signature(func))
-    )
-
-
-def fqn(namespace):
+def fqn(namespace) -> str:
     """ Return fully qualified name of ``thing``.
 
     :param namespace: must be a module, class, or instance.

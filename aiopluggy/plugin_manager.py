@@ -28,11 +28,13 @@ class PluginManager(object):
         self.implmarker = '_pluggy_%s_impl' % project_name
         self.specmarker = '_pluggy_%s_spec' % project_name
         self.hooks = self._Namespace()
-        self.name2plugin = {}
+        self.registered_plugins = set()
         self.history = []  # list of (name, kwargs) tuples in historic order.
         self.replay_to = {}  # HookImpl objects, indexed by name
+        self._event_loop = None
+        self.unscheduled_coros = []
 
-    def add_hookspecs(self, namespace):
+    def register_specs(self, namespace):
         """ add new hook specifications defined in the given module_or_class.
         Functions are recognized if they have been decorated accordingly. """
         names = []
@@ -55,6 +57,23 @@ class PluginManager(object):
             )
         return names
 
+    @property
+    def event_loop(self):
+        return self._event_loop
+
+    @event_loop.setter
+    def event_loop(self, value):
+        """
+
+        :type asyncio.AbstractEventLoop value:
+
+        """
+        self._event_loop = value
+        if value:
+            for coro in self.unscheduled_coros:
+                value.create_task(coro)
+            self.unscheduled_coros = []
+
     def register(self, namespace):
         """ Register a plugin and return its canonical name.
 
@@ -63,13 +82,13 @@ class PluginManager(object):
 
         """
         plugin_name = fqn(namespace)
-        if plugin_name in self.name2plugin:
+        if plugin_name in self.registered_plugins:
             raise ValueError("Plugin already registered: %s=%s" %
                              (plugin_name, namespace))
 
         # XXX if an error happens we should make sure no state has been
         # changed at point of return
-        self.name2plugin[plugin_name] = namespace
+        self.registered_plugins.add(plugin_name)
 
         for name in dir(namespace):
             hookimpl_flagset = self._get_hookimpl_flag_set(namespace, name)
@@ -87,7 +106,7 @@ class PluginManager(object):
             if hook_caller.spec and hook_caller.spec.is_replay:
                 self.replay_to[hookimpl.name] = hookimpl
 
-        self.replay_history()
+        self._replay_history()
         return plugin_name
 
     def _get_hookspec_flag_set(self, namespace, name):
@@ -128,12 +147,35 @@ class PluginManager(object):
                 result[name] = hook
         return result
 
-    def replay_history(self):
-        if not self.replay_to:
+    def missing(self):
+        """Dictionary of specified required hooks without implementation."""
+        result = {}
+        for name in self.hooks.__dict__:
+            if name[0] == "_":
+                continue
+            hook = getattr(self.hooks, name)
+            if hook.spec is not None and hook.spec.is_required and len(hook.functions) == 0:
+                result[name] = hook
+        return result
+
+    def _replay_history(self):
+        if len(self.replay_to) == 0:
             return
         for name, kwargs in self.history:
-            if name in self.replay_to:
-                hookimpl = self.replay_to[name]
-                hook = getattr(self.hooks, name)
-                hook.replay_to(hookimpl, kwargs)
+            if name not in self.replay_to:
+                continue
+            hookimpl = self.replay_to[name]
+            hook = getattr(self.hooks, name)
+            coro = hook.replay_to(hookimpl, kwargs)
+            if inspect.iscoroutine(coro):
+                if self.event_loop is not None:
+                    self.event_loop.create_task(coro)
+                else:
+                    self.unscheduled_coros.append(coro)
+            elif coro is not None:
+                warnings.warn(
+                    "%s return %r instead of coroutine or `None`.".format(
+                        hookimpl, coro
+                    )
+                )
         self.replay_to = {}

@@ -47,7 +47,7 @@ A definitive example
     async def main():
         # create a manager and add the spec
         pm = aiopluggy.PluginManager("myproject")
-        pm.add_hookspecs(MySpec)
+        pm.register_specs(MySpec)
 
         # register plugins
         await pm.register(Plugin_1())

@@ -39,25 +39,41 @@ class Result(object):
 
 
 async def _call_befores(hookimpls, caller_kwargs):
-    awaitables = []
-    # noinspection PyBroadException
-    try:  # <-- to cancel any unfinished awaitables
-        for hookimpl in reversed(hookimpls):
-            kwargs = hookimpl.filtered_args(caller_kwargs)
-            if hookimpl.is_async:
-                awaitables.append(asyncio.ensure_future(
+    async def call_group(hookimpl_group):
+        awaitables = []
+        # noinspection PyBroadException
+        try:  # <-- to cancel any unfinished awaitables
+            for hookimpl in reversed(hookimpl_group):
+                kwargs = hookimpl.filtered_args(caller_kwargs)
+                if hookimpl.is_async:
+                    awaitables.append(asyncio.ensure_future(
+                        hookimpl.function(**kwargs)
+                    ))
+                else:
                     hookimpl.function(**kwargs)
-                ))
-            else:
-                hookimpl.function(**kwargs)
-        if len(awaitables) > 0:
-            for f in asyncio.as_completed(awaitables):
-                await f
-    except Exception:
-        for a in awaitables:
-            if not a.done():
-                a.cancel()
-        raise
+            if len(awaitables) > 0:
+                for f in asyncio.as_completed(awaitables):
+                    await f
+        except Exception:
+            for a in awaitables:
+                if not a.done():
+                    a.cancel()
+            raise
+
+    for group in _priority_groups(hookimpls):
+        await call_group(group)
+
+
+def _priority_groups(hookimpls):
+    result = [[], [], []]
+    for h in hookimpls:
+        if h.is_try_first:
+            result[0].append(h)
+        elif not h.is_try_last:
+            result[1].append(h)
+        else:
+            result[2].append(h)
+    return result
 
 
 def _call_befores_sync(hookimpls, caller_kwargs):
@@ -75,38 +91,44 @@ async def multicall_parallel(before, functions, caller_kwargs, reraise):
     """
     # __tracebackhide__ = True
     await _call_befores(before, caller_kwargs=caller_kwargs)
-    awaitables = []
-    # noinspection PyBroadException
-    try:  # <-- to cancel any unfinished awaitables
-        for hookimpl in reversed(functions):
-            kwargs = hookimpl.filtered_args(caller_kwargs)
-            if hookimpl.is_async:
-                awaitables.append(asyncio.ensure_future(
-                    hookimpl.function(**kwargs)
-                ))
-            elif reraise:
-                yield hookimpl.function(**kwargs)
-            else:
-                # noinspection PyBroadException
-                try:
-                    yield Result(hookimpl.function(**kwargs))
-                except Exception:
-                    yield Result(exc_info=sys.exc_info())
-        if len(awaitables) > 0:
-            for f in asyncio.as_completed(awaitables):
-                if reraise:
-                    yield await f
+
+    async def call_group(hookimpl_group):
+        awaitables = []
+        # noinspection PyBroadException
+        try:  # <-- to cancel any unfinished awaitables
+            for hookimpl in reversed(hookimpl_group):
+                kwargs = hookimpl.filtered_args(caller_kwargs)
+                if hookimpl.is_async:
+                    awaitables.append(asyncio.ensure_future(
+                        hookimpl.function(**kwargs)
+                    ))
+                elif reraise:
+                    yield hookimpl.function(**kwargs)
                 else:
                     # noinspection PyBroadException
                     try:
-                        yield Result(await f)
+                        yield Result(hookimpl.function(**kwargs))
                     except Exception:
                         yield Result(exc_info=sys.exc_info())
-    except Exception:
-        for a in awaitables:
-            if not a.done():
-                a.cancel()
-        raise
+            if len(awaitables) > 0:
+                for f in asyncio.as_completed(awaitables):
+                    if reraise:
+                        yield await f
+                    else:
+                        # noinspection PyBroadException
+                        try:
+                            yield Result(await f)
+                        except Exception:
+                            yield Result(exc_info=sys.exc_info())
+        except Exception:
+            for a in awaitables:
+                if not a.done():
+                    a.cancel()
+            raise
+
+    for group in _priority_groups(functions):
+        async for result in call_group(group):
+            yield result
 
 
 def multicall_parallel_sync(before, functions, caller_kwargs, reraise):
@@ -136,7 +158,7 @@ async def multicall_first(before, functions, caller_kwargs, reraise):
 
     """
     # __tracebackhide__ = True
-    assert reraise == True
+    assert reraise
     await _call_befores(before, caller_kwargs=caller_kwargs)
     for hookimpl in reversed(functions):
         kwargs = hookimpl.filtered_args(caller_kwargs)
@@ -155,7 +177,7 @@ def multicall_first_sync(before, functions, caller_kwargs, reraise):
 
     """
     # __tracebackhide__ = True
-    assert reraise == True
+    assert reraise
     _call_befores_sync(before, caller_kwargs=caller_kwargs)
     for hookimpl in reversed(functions):
         kwargs = hookimpl.filtered_args(caller_kwargs)

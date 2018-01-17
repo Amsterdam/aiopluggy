@@ -42,7 +42,7 @@ async def test_async(pm: PluginManager):
             out.append(arg + 2)
             return arg + 2
 
-    pm.add_hookspecs(HookSpec())
+    pm.register_specs(HookSpec())
     pm.register(PluginBefore1())
     pm.register(PluginBefore2())
     pm.register(Plugin1())
@@ -100,7 +100,7 @@ def test_sync(pm: PluginManager):
             out.append(arg + 6)
             return arg + 6
 
-    pm.add_hookspecs(HookSpec())
+    pm.register_specs(HookSpec())
     pm.register(Plugin1())
     pm.register(Plugin2())
     pm.register(Plugin3())

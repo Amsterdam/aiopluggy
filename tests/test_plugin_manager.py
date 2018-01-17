@@ -17,7 +17,7 @@ def test_plugin_double_register(pm: PluginManager):
         pm.register(EmptyPlugin)
 
 
-def test_add_hookspecs_from_class(pm: PluginManager):
+def test_register_specs_from_class(pm: PluginManager):
     class HookSpec(object):
         @classmethod
         @hookspec
@@ -26,26 +26,26 @@ def test_add_hookspecs_from_class(pm: PluginManager):
         @hookspec
         def some_instance_method(self, arg1, arg2, foo='bar'):
             pass
-    pm.add_hookspecs(HookSpec)
+    pm.register_specs(HookSpec)
     assert pm.hooks.some_class_method.spec.req_args == {'arg1', 'arg2'}
     assert pm.hooks.some_class_method.spec.opt_args == {'foo': 'bar'}
     assert pm.hooks.some_instance_method.spec.req_args == {'arg1', 'arg2'}
     assert pm.hooks.some_instance_method.spec.opt_args == {'foo': 'bar'}
 
 
-def test_add_hookspecs_from_object(pm: PluginManager):
+def test_register_specs_from_object(pm: PluginManager):
     class HookSpec(object):
         @hookspec
         def some_method(self, arg1, arg2, foo='bar'):
             pass
-    pm.add_hookspecs(HookSpec())
+    pm.register_specs(HookSpec())
     assert pm.hooks.some_method.spec.req_args == {'arg1', 'arg2'}
     assert pm.hooks.some_method.spec.opt_args == {'foo': 'bar'}
 
 
-def test_add_hookspecs_from_module(pm: PluginManager):
+def test_register_specs_from_module(pm: PluginManager):
     import plugin_spec
-    pm.add_hookspecs(plugin_spec)
+    pm.register_specs(plugin_spec)
     assert pm.hooks.function_spec.spec.req_args == {'arg1', 'arg2'}
     assert pm.hooks.function_spec.spec.opt_args == {'foo': 'bar'}
 

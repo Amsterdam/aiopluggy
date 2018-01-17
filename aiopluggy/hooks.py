@@ -11,16 +11,11 @@ class HookCallError(Exception):
 
 
 class HookSpec(object):
-    _ALLOWED_PARAMETER_KINDS = {
-        inspect.Parameter.POSITIONAL_ONLY,
-        inspect.Parameter.POSITIONAL_OR_KEYWORD
-    }
-
     def __init__(self, namespace, name, flag_set):
         self.namespace = namespace
         self.name = name
         self.function = getattr(namespace, name)
-        self.is_first_result = self.is_replay = self.is_reraise = self.is_sync = False
+        self.is_first_result = self.is_replay = self.is_required = self.is_reraise = self.is_sync = False
         self.__dict__.update(HookspecMarker.set2dict(flag_set))
         self.__init_args()
 
@@ -44,6 +39,11 @@ class HookSpec(object):
             p.name: p.default for p in parameters
             if p.default is not inspect.Parameter.empty  # p.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
         }
+
+    def __str__(self):
+        return "%s.%s%s".format(
+            fqn(self.namespace), self.name, inspect.signature(self.function)
+        )
 
 
 class HookValidationError(Exception):
@@ -125,3 +125,8 @@ class HookImpl(object):
                 "only have meaning for hooks specified as `first_result`." %
                 (fqn(self.plugin), self.name)
             )
+
+    def __str__(self):
+        return "%s.%s%s".format(
+            fqn(self.plugin), self.name, inspect.signature(self.function)
+        )

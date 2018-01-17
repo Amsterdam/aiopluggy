@@ -2,10 +2,10 @@ class HookspecMarker(object):
     """ Decorator helper class for marking functions as hook specifications.
 
     You can instantiate it with a project_name to get a decorator.
-    Calling PluginManager.add_hookspecs later will discover all marked functions
+    Calling PluginManager.register_specs later will discover all marked functions
     if the PluginManager uses the same project_name.
     """
-    QUALIFIERS = {'first_result', 'replay', 'reraise', 'sync'}
+    QUALIFIERS = {'first_result', 'replay', 'reraise', 'sync', 'required'}
 
     def __init__(self, project_name, flags=None):
         if flags is None:
@@ -29,6 +29,10 @@ class HookspecMarker(object):
     @property
     def replay(self):
         return self._with_flag('replay')
+
+    @property
+    def required(self):
+        return self._with_flag('required')
 
     @property
     def reraise(self):

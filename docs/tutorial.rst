@@ -222,9 +222,9 @@ For this reason, ``aiopluggy`` provides the ``dont_await`` qualifier::
 Now, the special semantics are more explicit.
 
 
-``wrapper``
-^^^^^^^^^^^
-Treat the function as a **hook wrapper**. This means that the
+``before``
+^^^^^^^^^^
+Instructs the plugin manager to call this function when the hook is invoked, *before* **hook wrapper**. This means that the
 function will be called to *wrap* (or surround) all other normal hook function
 calls. A **hook wrapper** can thus execute some code ahead of, and after, the
 execution of all corresponding non-wrapppers.
@@ -276,7 +276,7 @@ specification* with only a docstring in its body.
 Just like a *plugin* is a set of hook *implementation* functions, hook
 *specification* functions are grouped by namespaces, which are then fed to the
 :class:`~aiopluggy.PluginManager` using the
-:meth:`~aiopluggy.PluginManager.add_hookspecs()` method::
+:meth:`~aiopluggy.PluginManager.register_specs()` method::
 
     from aiopluggy import HookspecMarker
 
@@ -296,7 +296,7 @@ If the code-block above were in module :file:`greeting_specs.py`, you would do::
     import greeting_specs
 
     pm = PluginManager('my_project')
-    pm.add_hookspecs(greeting_specs)
+    pm.register_specs(greeting_specs)
 
 
 Registering a *hook function* which does not meet the constraints of its
@@ -475,7 +475,7 @@ More practically you call a *hook* like so:
     from configuration import config
 
     pm = aiopluggy.PluginManager("myproject")
-    pm.add_hookspecs(mypluginspec)
+    pm.register_specs(mypluginspec)
     pm.register(myplugin)
 
     # we invoke the HookCaller and thus all underlying hookimpls
