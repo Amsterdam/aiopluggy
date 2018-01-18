@@ -166,16 +166,6 @@ class PluginManager(object):
                 continue
             hookimpl = self.replay_to[name]
             hook = getattr(self.hooks, name)
-            coro = hook.replay_to(hookimpl, kwargs)
-            if inspect.iscoroutine(coro):
-                if self.event_loop is not None:
-                    self.event_loop.create_task(coro)
-                else:
-                    self.unscheduled_coros.append(coro)
-            elif coro is not None:
-                warnings.warn(
-                    "%s return %r instead of coroutine or `None`.".format(
-                        hookimpl, coro
-                    )
-                )
+            """:type: aiopluggy.hookcaller.HookCaller"""
+            hook.replay_to([hookimpl], kwargs)
         self.replay_to = {}

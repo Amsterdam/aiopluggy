@@ -79,3 +79,21 @@ async def test_add_hookimpls_from_module(pm: PluginManager):
     assert len(pm.hooks.function_impl.functions) == 1
     assert len(pm.hooks.class1_impl.functions) == 1
     assert len(pm.hooks.class2_impl.functions) == 1
+
+
+def test_replay(pm: PluginManager):
+    out = []
+    class Spec:
+        @hookspec.replay
+        def replay_me(self):
+            pass
+    class Impl:
+        @hookimpl
+        def replay_me(self):
+            out.append(1)
+    pm.register_specs(Spec)
+    pm.register(Impl())
+    pm.hooks.replay_me()
+    assert out == [1]
+    pm.register(Impl())
+    assert out == [1, 1]

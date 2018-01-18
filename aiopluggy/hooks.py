@@ -41,7 +41,7 @@ class HookSpec(object):
         }
 
     def __str__(self):
-        return "%s.%s%s".format(
+        return "%s.%s%s" % (
             fqn(self.namespace), self.name, inspect.signature(self.function)
         )
 
@@ -127,6 +127,6 @@ class HookImpl(object):
             )
 
     def __str__(self):
-        return "%s.%s%s".format(
+        return "%s.%s%s" % (
             fqn(self.plugin), self.name, inspect.signature(self.function)
         )
