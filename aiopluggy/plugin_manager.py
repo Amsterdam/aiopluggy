@@ -31,8 +31,10 @@ class PluginManager(object):
         self.registered_plugins = set()
         self.history = []  # list of (name, kwargs) tuples in historic order.
         self.replay_to = {}  # HookImpl objects, indexed by name
-        self._event_loop = None
         self.unscheduled_coros = []
+        """:type: list(tuple(aiopluggy.hooks.HookImpl, Coroutine))"""
+        self.unhandled_exceptions = []
+        """:type: list(tuple(aiopluggy.hooks.HookImpl, Exception))"""
 
     def register_specs(self, namespace):
         """ add new hook specifications defined in the given module_or_class.
@@ -56,23 +58,6 @@ class PluginManager(object):
                 (self.project_name, namespace)
             )
         return names
-
-    @property
-    def event_loop(self):
-        return self._event_loop
-
-    @event_loop.setter
-    def event_loop(self, value):
-        """
-
-        :type asyncio.AbstractEventLoop value:
-
-        """
-        self._event_loop = value
-        if value:
-            for coro in self.unscheduled_coros:
-                value.create_task(coro)
-            self.unscheduled_coros = []
 
     def register(self, namespace):
         """ Register a plugin and return its canonical name.
@@ -171,9 +156,12 @@ class PluginManager(object):
                 kwargs, reraise=False, functions=[hookimpl]
             )[0]
             if hookimpl.is_async:
-                self.unscheduled_coros.append(result.value)
+                self.unscheduled_coros.append((hookimpl, result.value))
         self.replay_to = {}
 
     async def await_unscheduled_coros(self):
-        for coro in self.unscheduled_coros:
-            await coro
+        for hookimpl, coro in self.unscheduled_coros:
+            try:
+                await coro
+            except Exception as e:
+                self.unhandled_exceptions.append((hookimpl, e))
