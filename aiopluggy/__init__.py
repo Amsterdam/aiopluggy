@@ -3,4 +3,4 @@ from .markers import HookspecMarker, HookimplMarker
 from .plugin_manager import PluginManager
 
 
-VERSION = '0.1.4rc1'
+VERSION = '0.1.5rc1'

@@ -10,8 +10,6 @@ class HookspecMarker(object):
     def __init__(self, project_name, flags=None):
         if flags is None:
             flags = set()
-        if 'replay' in flags:
-            flags.add('sync')
         if 'first_result' in flags:
             flags.add('reraise')
         self.project_name = project_name

@@ -66,8 +66,8 @@ async def test_async(pm: PluginManager):
     pm.register(Plugin4())
     pm.register(Plugin5())
     pm.register(Plugin6())
-    results = pm.hooks.some_method(arg=0)
-    values = {result.value async for result in results}
+    results = await pm.hooks.some_method(arg=0)
+    values = {result.value for result in results}
     assert values == {1, 2, 3, 4, 5, 6}
     assert set(out) == values
 

@@ -47,8 +47,8 @@ async def test_async(pm: PluginManager):
     pm.register(PluginBefore2())
     pm.register(Plugin1())
     pm.register(Plugin2())
-    results = pm.hooks.some_method(arg=0)
-    values = {result.value async for result in results}
+    results = await pm.hooks.some_method(arg=0)
+    values = {result.value for result in results}
     assert values == {1, 2}
     assert len(out) == len(values)
     assert set(out) == values

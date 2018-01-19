@@ -81,19 +81,32 @@ async def test_add_hookimpls_from_module(pm: PluginManager):
     assert len(pm.hooks.class2_impl.functions) == 1
 
 
-def test_replay(pm: PluginManager):
+@pytest.mark.asyncio
+async def test_replay(pm: PluginManager):
     out = []
+
     class Spec:
         @hookspec.replay
-        def replay_me(self):
+        def replay_me1(self, arg):
             pass
+
+        @hookspec.replay
+        def replay_me2(self, arg):
+            pass
+
     class Impl:
         @hookimpl
-        def replay_me(self):
-            out.append(1)
+        def replay_me1(self, arg):
+            out.append(arg)
+
+        @hookimpl
+        async def replay_me2(self, arg):
+            out.append(arg)
+
     pm.register_specs(Spec)
+    await pm.hooks.replay_me1(arg=1)
+    await pm.hooks.replay_me2(arg=2)
     pm.register(Impl())
-    pm.hooks.replay_me()
     assert out == [1]
-    pm.register(Impl())
-    assert out == [1, 1]
+    await pm.hooks.replay_me1(arg=3)
+    assert out == [1, 2, 3]

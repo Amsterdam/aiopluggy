@@ -3,7 +3,7 @@ import warnings
 
 from .helpers import fqn
 from .hooks import HookImpl
-from .hookcaller import HookCaller
+from .hook_caller import HookCaller
 
 
 class PluginManager(object):
@@ -165,7 +165,15 @@ class PluginManager(object):
             if name not in self.replay_to:
                 continue
             hookimpl = self.replay_to[name]
-            hook = getattr(self.hooks, name)
-            """:type: aiopluggy.hookcaller.HookCaller"""
-            hook.replay_to([hookimpl], kwargs)
+            hookcaller = getattr(self.hooks, name)
+            """:type: aiopluggy.hook_caller.HookCaller"""
+            result = hookcaller._multicall_parallel_sync(
+                kwargs, reraise=False, functions=[hookimpl]
+            )[0]
+            if hookimpl.is_async:
+                self.unscheduled_coros.append(result.value)
         self.replay_to = {}
+
+    async def await_unscheduled_coros(self):
+        for coro in self.unscheduled_coros:
+            await coro
