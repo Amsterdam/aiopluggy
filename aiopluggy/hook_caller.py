@@ -70,34 +70,32 @@ class HookCaller(object):
     def __call__(self, *args, **kwargs):
         if args:
             raise TypeError("hook calling supports only keyword arguments")
-        multicall_ = self._multicall_parallel_sync if self.spec.is_sync else self._multicall_parallel
-        if self.spec is None:
-            return multicall_(
-                before=self.before,
-                functions=self.functions,
-                caller_kwargs=kwargs,
-                reraise=False
+        spec = self.spec
+        if spec is None:
+            return self._multicall_sync(
+                caller_kwargs=kwargs
             )
-        notinspec = set(kwargs.keys()) - self.spec.req_args - set(self.spec.opt_args.keys())
+        notinspec = set(kwargs.keys()) - spec.req_args - set(spec.opt_args.keys())
         if notinspec:
             raise TypeError(
                 # TODO: show spec signature
                 "Argument(s) %s not declared in hookspec" % (notinspec,),
             )
-        notincall = self.spec.req_args - set(kwargs.keys())
+        notincall = spec.req_args - set(kwargs.keys())
         if notincall:
             raise TypeError(
                 # TODO: show spec signature
                 "Missing required argument(s): %s" % (notincall,)
             )
-        if self.spec.is_replay:
+        if spec.is_replay:
             self.plugin_manager.history.append((self.name, kwargs))
-        if self.spec.is_first_result:
-            multicall_ = self._multicall_first_sync if self.spec.is_sync else self._multicall_first
-        return multicall_(
-            caller_kwargs=kwargs,
-            reraise=self.spec.is_reraise
-        )
+        if spec.is_first_notnone or spec.is_first_only:
+            return self._multicall_first_sync(kwargs, spec.is_first_only) \
+                if spec.is_sync \
+                else self._multicall_first_async(kwargs, spec.is_first_only)
+        return self._multicall_sync(kwargs) \
+            if spec.is_sync \
+            else self._multicall_async(kwargs)
 
     async def _call_befores(self, caller_kwargs):
         async def call_befores(hookimpl_group):
@@ -130,7 +128,7 @@ class HookCaller(object):
             kwargs = hookimpl.filtered_args(caller_kwargs)
             hookimpl.function(**kwargs)
 
-    async def _multicall_parallel(self, caller_kwargs, reraise, functions=None):
+    async def _multicall_async(self, caller_kwargs, functions=None):
         """Execute a call into multiple python methods.
 
         ``caller_kwargs`` comes from HookCaller.__call__().
@@ -153,8 +151,6 @@ class HookCaller(object):
                         awaitables.append(asyncio.ensure_future(
                             hookimpl.function(**kwargs)
                         ))
-                    elif reraise:
-                        retval.append(hookimpl.function(**kwargs))
                     else:
                         # noinspection PyBroadException
                         try:
@@ -163,14 +159,11 @@ class HookCaller(object):
                             retval.append(Result(exc_info=sys.exc_info()))
                 if len(awaitables) > 0:
                     for f in asyncio.as_completed(awaitables):
-                        if reraise:
-                            retval.append(await f)
-                        else:
-                            # noinspection PyBroadException
-                            try:
-                                retval.append(Result(await f))
-                            except Exception:
-                                retval.append(Result(exc_info=sys.exc_info()))
+                        # noinspection PyBroadException
+                        try:
+                            retval.append(Result(await f))
+                        except Exception:
+                            retval.append(Result(exc_info=sys.exc_info()))
             except Exception:
                 for a in awaitables:
                     if not a.done():
@@ -181,67 +174,63 @@ class HookCaller(object):
             await multicall_parallel(group)
         return retval
 
-    def _multicall_parallel_sync(self, caller_kwargs, reraise, functions=None):
+    def _multicall_sync(self, caller_kwargs, functions=None):
         """Execute a call into multiple python methods.
 
         Called from :func:`HookCaller.__call__`.
 
         """
         # __tracebackhide__ = True
-        retval = []
         if functions is None:
             functions = self.functions
         self._call_befores_sync(caller_kwargs=caller_kwargs)
+        retval = []
         for hookimpl in reversed(functions):
             kwargs = hookimpl.filtered_args(caller_kwargs)
-            if reraise:
-                retval.append(hookimpl.function(**kwargs))
-            else:
-                # noinspection PyBroadException
-                try:
-                    retval.append(Result(hookimpl.function(**kwargs)))
-                except Exception:
-                    retval.append(Result(exc_info=sys.exc_info()))
+            # noinspection PyBroadException
+            try:
+                retval.append(Result(hookimpl.function(**kwargs)))
+            except Exception:
+                retval.append(Result(exc_info=sys.exc_info()))
         return retval
 
-    async def _multicall_first(self, caller_kwargs, reraise, functions=None):
+    async def _multicall_first_async(self, caller_kwargs, first_only, functions=None):
         """Execute a call into multiple python methods.
 
-        Called from :func:`HookCaller.__call__`.
+        ``caller_kwargs`` comes from HookCaller.__call__().
 
         """
         # __tracebackhide__ = True
-        await self.plugin_manager.await_unscheduled_coros()
-        assert reraise
         if functions is None:
             functions = self.functions
+        await self.plugin_manager.await_unscheduled_coros()
         await self._call_befores(caller_kwargs=caller_kwargs)
         for hookimpl in reversed(functions):
             kwargs = hookimpl.filtered_args(caller_kwargs)
+            # noinspection PyBroadException
             result = hookimpl.function(**kwargs)
             if hookimpl.is_async:
                 result = await result
-            if result is not None:
+            if first_only or result is not None:
                 return result
         return None
 
-    def _multicall_first_sync(self, caller_kwargs, reraise, functions=None):
+    def _multicall_first_sync(self, caller_kwargs, first_only, functions=None):
         """Execute a call into multiple python methods.
 
         Called from :func:`HookCaller.__call__`.
 
         """
         # __tracebackhide__ = True
-        assert reraise
         if functions is None:
             functions = self.functions
         self._call_befores_sync(caller_kwargs=caller_kwargs)
+        retval = []
         for hookimpl in reversed(functions):
             kwargs = hookimpl.filtered_args(caller_kwargs)
             result = hookimpl.function(**kwargs)
-            if result is not None:
+            if first_only or result is not None:
                 return result
         return None
-
 
 HookCaller.pm = HookCaller.plugin_manager

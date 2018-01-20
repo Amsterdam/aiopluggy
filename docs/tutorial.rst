@@ -66,7 +66,7 @@ When a hook is implemented by more than one plugin, the *default behaviour* of
 the :class:`~aiopluggy.PluginManager` is to call *all* implementations, and
 return a list of results. Alternatively, you can instruct the plugin manager to
 call the implementations one-by-one, until one of them returns a non-``None``
-value, and return this single value (see :ref:`first_result`).
+value, and return this single value (see :ref:`first_notnone`).
 
 
 .. _marking_implementations:
@@ -179,7 +179,7 @@ Will output ``[1, 2]``, even though ``Plugin2`` was registered *after*
 
 .. todo::
 
-    Write something about asynchronous hook functions in relation to call ordering and the :ref:`first_result` qualifier.
+    Write something about asynchronous hook functions in relation to call ordering and the :ref:`first_notnone` qualifier.
 
 
 ``dont_await``
@@ -309,12 +309,12 @@ corresponding *hook specification* will result in an error.
     validated. However this is not normally recommended.
 
 Currently, ``aiopluggy`` supports two *hook specification qualifiers*:
-:ref:`first_result` and ``replay``, which can *not* be combined.
+:ref:`first_notnone` and ``replay``, which can *not* be combined.
 
 
 .. _first_result:
 
-``first_result``
+``first_notnone``
 ^^^^^^^^^^^^^^^^
 A *hookspec* can be marked such that when the *hook* is called the call loop
 will only invoke up to the first *hookimpl* which returns a result other
@@ -322,7 +322,7 @@ then ``None``.
 
 .. code-block:: python
 
-    @hookspec.first_result
+    @hookspec.first_notnone
     def myhook(config, args):
         pass
 
@@ -332,7 +332,7 @@ interested in a single core *hookimpl*.
 .. note::
 
     Asynchronous **hook functions** are normally executed in parallel. If you
-    set the ``first_result`` qualifier, these functions will be called *one at a
+    set the ``first_notnone`` qualifier, these functions will be called *one at a
     time*, which may result in longer wall-times for the hook call.
 
 
@@ -527,6 +527,6 @@ result will have that result appended to a :class:`list` which is returned by
 the call.
 
 The only exception to this behaviour is if the hook has been marked to return
-its :ref:`first_result` in which case only the first single value (which is not
+its :ref:`first_notnone` in which case only the first single value (which is not
 ``None``) will be returned.
 

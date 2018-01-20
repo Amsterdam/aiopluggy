@@ -15,7 +15,8 @@ class HookSpec(object):
         self.namespace = namespace
         self.name = name
         self.function = getattr(namespace, name)
-        self.is_first_result = self.is_replay = self.is_required = self.is_reraise = self.is_sync = False
+        self.is_first_notnone = self.is_first_only = self.is_replay = \
+            self.is_required = self.is_sync = False
         self.__dict__.update(HookspecMarker.set2dict(flag_set))
         self.__init_args()
 
@@ -115,14 +116,6 @@ class HookImpl(object):
         if self.is_async and spec.is_sync:
             raise HookValidationError(
                 "%s.%s: asynchronous hook function not allowod by hook spec." %
-                (fqn(self.plugin), self.name)
-            )
-
-        # noinspection PyUnresolvedReferences
-        if (self.is_try_first or self.is_try_last) and not spec.is_first_result:
-            warnings.warn(
-                "Hook function %s.%s: `try_first` and `try_last` qualifiers "
-                "only have meaning for hooks specified as `first_result`." %
                 (fqn(self.plugin), self.name)
             )
 

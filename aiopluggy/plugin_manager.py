@@ -110,6 +110,17 @@ class PluginManager(object):
             flag_set = getattr(thing.__init__, self.implmarker, None)
         return flag_set
 
+    def redundant(self):
+        """Dictionary of ``first_only`` hooks with multiple implementations."""
+        result = {}
+        for name, hookcaller in self.hooks.__dict__.items():
+            if name[0] == "_":
+                continue
+            spec = hookcaller.spec
+            if spec is not None and spec.is_first_only and len(hookcaller.functions) > 1:
+                result[name] = hookcaller
+        return result
+
     def unspecified(self):
         """Dictionary of implemented hooks without specification."""
         result = {}
@@ -152,11 +163,22 @@ class PluginManager(object):
             hookimpl = self.replay_to[name]
             hookcaller = getattr(self.hooks, name)
             """:type: aiopluggy.hook_caller.HookCaller"""
-            result = hookcaller._multicall_parallel_sync(
-                kwargs, reraise=False, functions=[hookimpl]
-            )[0]
-            if hookimpl.is_async:
-                self.unscheduled_coros.append((hookimpl, result.value))
+            if hookimpl.is_async or any(
+                b.is_async for b in hookcaller.before
+            ):
+                self.unscheduled_coros.append((
+                    hookimpl,
+                    hookcaller._multicall_first_async(
+                        kwargs, first_only=True, functions=[hookimpl]
+                    )
+                ))
+            else:
+                try:
+                    hookcaller._multicall_first_sync(
+                        kwargs, first_only=True, functions=[hookimpl]
+                    )
+                except Exception as e:
+                    self.unhandled_exceptions.append((hookimpl, e))
         self.replay_to = {}
 
     async def await_unscheduled_coros(self):

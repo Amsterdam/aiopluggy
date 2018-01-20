@@ -9,13 +9,16 @@ hookimpl = HookimplMarker("example")
 
 # noinspection PyStatementEffect
 def test_spec_qualifiers():
-    hookspec.first_result
+    hookspec.first_notnone
+    hookspec.first_only
     hookspec.replay
-    hookspec.reraise
     hookspec.sync
+    hookspec.required
     with pytest.raises(AttributeError):
         # noinspection PyUnresolvedReferences
         hookspec.non_existing
+    with pytest.raises(AttributeError):
+        hookspec.first_notnone.first_only
 
 
 # noinspection PyStatementEffect

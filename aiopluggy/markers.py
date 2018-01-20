@@ -5,13 +5,20 @@ class HookspecMarker(object):
     Calling PluginManager.register_specs later will discover all marked functions
     if the PluginManager uses the same project_name.
     """
-    QUALIFIERS = {'first_result', 'replay', 'reraise', 'sync', 'required'}
+    QUALIFIERS = {'first_notnone', 'first_only', 'replay', 'sync', 'required'}
 
     def __init__(self, project_name, flags=None):
         if flags is None:
             flags = set()
-        if 'first_result' in flags:
-            flags.add('reraise')
+        if {'first_only', 'first_notnone'} <= flags:
+            # Normally, this condition should raise a ValueError, because the
+            # value of a parameter (flags) is illegal. Instead, we raise
+            # AttributeError because, from a user perspective, this Exception is
+            # raised when adding a qualifier to a marker, in which case
+            # AttributeError is more logical.
+            raise AttributeError(
+                "Qualifiers 'first_notnone' and 'first_only' are incompatible"
+            )
         self.project_name = project_name
         self.specmarker = '_pluggy_%s_spec' % project_name
         self.flags = flags
@@ -21,8 +28,12 @@ class HookspecMarker(object):
         return func
 
     @property
-    def first_result(self):
-        return self._with_flag('first_result')
+    def first_notnone(self):
+        return self._with_flag('first_notnone')
+
+    @property
+    def first_only(self):
+        return self._with_flag('first_only')
 
     @property
     def replay(self):
@@ -31,10 +42,6 @@ class HookspecMarker(object):
     @property
     def required(self):
         return self._with_flag('required')
-
-    @property
-    def reraise(self):
-        return self._with_flag('reraise')
 
     @property
     def sync(self):

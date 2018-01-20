@@ -55,8 +55,7 @@ class Result(object):
 def multicall_parallel_wrapped(
     wrappers,
     implementations,
-    caller_kwargs,
-    reraise=False
+    caller_kwargs
 ):
     """Execute a call into multiple python methods.
 
@@ -93,24 +92,17 @@ def multicall_parallel_wrapped(
                         implementation.function(**kwargs)
                     ))
                 else:
-                    if reraise:
-                        yield implementation.function(**kwargs)
-                    else:
-                        try:
-                            yield Result(implementation.function(**kwargs))
-                        except Exception:
-                            yield Result(exc_info=sys.exc_info())
+                    try:
+                        yield Result(implementation.function(**kwargs))
+                    except Exception:
+                        yield Result(exc_info=sys.exc_info())
             if len(awaitables) > 0:
                 for f in asyncio.as_completed(awaitables):
-                    if reraise:
+                    try:
                         result = yield from f
-                        yield result
-                    else:
-                        try:
-                            result = yield from f
-                            yield Result(result)
-                        except Exception:
-                            yield Result(exc_info=sys.exc_info())
+                        yield Result(result)
+                    except Exception:
+                        yield Result(exc_info=sys.exc_info())
         except Exception:
             for a in awaitables:
                 if not a.done():
@@ -137,7 +129,7 @@ def multicall_parallel_wrapped(
 
 
 # noinspection PyBroadException
-def multicall_parallel(implementations, caller_kwargs, reraise=False):
+def multicall_parallel(implementations, caller_kwargs):
     """Execute a call into multiple python methods.
 
     ``caller_kwargs`` comes from HookCaller.__call__().
@@ -173,24 +165,17 @@ def multicall_parallel(implementations, caller_kwargs, reraise=False):
                         implementation.function(**kwargs)
                     ))
                 else:
-                    if reraise:
-                        yield implementation.function(**kwargs)
-                    else:
-                        try:
-                            yield Result(implementation.function(**kwargs))
-                        except Exception:
-                            yield Result(exc_info=sys.exc_info())
+                    try:
+                        yield Result(implementation.function(**kwargs))
+                    except Exception:
+                        yield Result(exc_info=sys.exc_info())
             if len(awaitables) > 0:
                 for f in asyncio.as_completed(awaitables):
-                    if reraise:
+                    try:
                         result = yield from f
-                        yield result
-                    else:
-                        try:
-                            result = yield from f
-                            yield Result(result)
-                        except Exception:
-                            yield Result(exc_info=sys.exc_info())
+                        yield Result(result)
+                    except Exception:
+                        yield Result(exc_info=sys.exc_info())
         except Exception:
             for a in awaitables:
                 if not a.done():
@@ -220,8 +205,7 @@ def multicall_parallel(implementations, caller_kwargs, reraise=False):
 def multicall_parallel_sync_wrapped(
     wrappers,
     implementations,
-    caller_kwargs,
-    reraise=False
+    caller_kwargs
 ):
     """Execute a call into multiple python methods.
 
@@ -243,13 +227,10 @@ def multicall_parallel_sync_wrapped(
 
         for implementation in reversed(implementations):
             kwargs = implementation.filtered_args(caller_kwargs)
-            if reraise:
-                yield implementation.function(**kwargs)
-            else:
-                try:
-                    yield Result(implementation.function(**kwargs))
-                except Exception:
-                    yield Result(exc_info=sys.exc_info())
+            try:
+                yield Result(implementation.function(**kwargs))
+            except Exception:
+                yield Result(exc_info=sys.exc_info())
 
     finally:
         # run all wrapper post-yield blocks
@@ -268,7 +249,7 @@ def multicall_parallel_sync_wrapped(
 
 
 # noinspection PyBroadException
-def multicall_parallel_sync(implementations, caller_kwargs, reraise=False):
+def multicall_parallel_sync(implementations, caller_kwargs):
     """Execute a call into multiple python methods.
 
     ``caller_kwargs`` comes from HookCaller.__call__().
@@ -278,13 +259,10 @@ def multicall_parallel_sync(implementations, caller_kwargs, reraise=False):
 
     for implementation in reversed(implementations):
         kwargs = implementation.filtered_args(caller_kwargs)
-        if reraise:
-            yield implementation.function(**kwargs)
-        else:
-            try:
-                yield Result(implementation.function(**kwargs))
-            except Exception:
-                yield Result(exc_info=sys.exc_info())
+        try:
+            yield Result(implementation.function(**kwargs))
+        except Exception:
+            yield Result(exc_info=sys.exc_info())
 
 
 def multicall_first(wrappers, implementations, caller_kwargs):
