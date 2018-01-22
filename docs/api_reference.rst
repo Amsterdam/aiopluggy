@@ -3,8 +3,33 @@
 Api Reference
 =============
 
+HookimplMarker
+--------------
+.. autoclass:: aiopluggy.HookimplMarker
+
+
+HookspecMarker
+--------------
+.. autoclass:: aiopluggy.HookspecMarker
+
+
+HookCallError
+-------------
+.. autoclass:: aiopluggy.HookCallError
+
+
+HookValidationError
+-------------------
+.. autoclass:: aiopluggy.HookValidationError
+
+
+PluginManager
+-------------
 .. autoclass:: aiopluggy.PluginManager
 
-.. autoclass:: aiopluggy.multicall.Result
 
-.. autoclass:: aiopluggy.HookValidationError
+Result
+------
+.. autoclass:: aiopluggy.Result
+
+

@@ -27,7 +27,7 @@ functions*.
 
 ``aiopluggy``'s approach is meant to let a designer think carefuly about which objects are
 explicitly needed by an extension writer. This is in contrast to subclass-based extension
-systems which may expose unecessary state and behaviour or encourage `tight coupling`_
+systems which may expose unecessary state and behaviour or encourage tight coupling
 in overlying frameworks.
 
 
@@ -62,11 +62,11 @@ which defines the primary ``aiopluggy`` API. In order for a ``PluginManager`` to
 detect *hook functions* in a namespace, they must be decorated using special
 ``aiopluggy`` *hook markers*.
 
-When a hook is implemented by more than one plugin, the *default behaviour* of
+When a hook is implemented by more than one **plugin**, the *default behaviour* of
 the :class:`~aiopluggy.PluginManager` is to call *all* implementations, and
-return a list of results. Alternatively, you can instruct the plugin manager to
+return a list of results. Alternatively, you can instruct the :class:`~aiopluggy.PluginManager` to
 call the implementations one-by-one, until one of them returns a non-``None``
-value, and return this single value (see :ref:`first_notnone`).
+value, and return this single value (see `first_notnone`_).
 
 
 .. _marking_implementations:
@@ -94,7 +94,7 @@ constructor argument. Implementations marked with the created instance will only
 be detected by a :class:`~aiopluggy.PluginManager` that is explicitly
 set to detect hooks with this ``project_name``. This allows
 you to have distinct sets of hooks in your program, each managed by its own
-plugin manager instance.
+:class:`~aiopluggy.PluginManager` instance.
 
 
 Asynchronous hook functions
@@ -123,7 +123,7 @@ qualifier::
     def get_one_message():
         return "Hello world!"
 
-The :ref:`try_first` qualifier instructs the plugin manager to try this
+The :ref:`try_first` qualifier instructs the :class:`~aiopluggy.PluginManager` to try this
 implementation before all other implementations not marked as :ref:`try_first`.
 
 Currently, ``aiopluggy`` supports the following qualifiers for hook functions:
@@ -179,7 +179,8 @@ Will output ``[1, 2]``, even though ``Plugin2`` was registered *after*
 
 .. todo::
 
-    Write something about asynchronous hook functions in relation to call ordering and the :ref:`first_notnone` qualifier.
+    Write something about asynchronous hook functions in relation to call
+    ordering and the `first_notnone`_ qualifier.
 
 
 ``dont_await``
@@ -189,7 +190,7 @@ detected <inspect.iscoroutinefunction>` by the
 :class:`~aiopluggy.PluginManager`, and :ref:`awaited <await>` at call-time. But
 what if the caller should receive the :class:`~asyncio.Future` object returned
 by the coroutine function, instead of having this future object awaited by the
-plugin manager?
+:class:`~aiopluggy.PluginManager`?
 
 As a workaround, you could wrap the coroutine function in a synchronous
 function, like this::
@@ -253,12 +254,12 @@ Much in the same way as a :func:`context manager <contextlib.contextmanager>`, a
         if config.debug:
             print("Post-hook argument values: %r, %r" % (arg1, arg2))
 
-The generator is :func:`sent <__send__>` a list of :class:`~aiopluggy.Result`
+The generator is :meth:`sent <generator.send>` a list of :class:`~aiopluggy.Result`
 objects which is assigned in the ``yield`` expression and used to update the
 ``config`` dictionary.
 
 Hook wrappers can not *return* results (as per generator function semantics);
-they can only modify them by changing the :attr:``Result.value`` attribute.
+they can only modify them by changing the `Result.value` attribute.
 
 
 Hook specifications
@@ -309,15 +310,13 @@ corresponding *hook specification* will result in an error.
     validated. However this is not normally recommended.
 
 Currently, ``aiopluggy`` supports two *hook specification qualifiers*:
-:ref:`first_notnone` and ``replay``, which can *not* be combined.
+`first_notnone`_ and `replay`_, which can *not* be combined.
 
-
-.. _first_result:
 
 ``first_notnone``
-^^^^^^^^^^^^^^^^
-A *hookspec* can be marked such that when the *hook* is called the call loop
-will only invoke up to the first *hookimpl* which returns a result other
+^^^^^^^^^^^^^^^^^
+A **hookspec** can be marked such that when the *hook* is called the call loop
+will only invoke up to the first **hookimpl** which returns a result other
 then ``None``.
 
 .. code-block:: python
@@ -336,11 +335,18 @@ interested in a single core *hookimpl*.
     time*, which may result in longer wall-times for the hook call.
 
 
+``first_only``
+^^^^^^^^^^^^^^
+Very similar to `first_notnone`_, except that only *one* implementation is
+called. This will be the implementation last registered, or the last
+implementation marked as `try_first`_ registered.
+
+
 ``replay``
 ^^^^^^^^^^
-Marking a *hookspec* with the ``replay`` qualifier means that calls to this
+Marking a **hookspec** with the ``replay`` qualifier means that calls to this
 hook are remembered. When a new hook function is registered *after* the hook has
-been called one or more times, these calls will be replayed to the newly
+been called one or more times, these past calls will be replayed to the newly
 registered hook function. This turns out to be particularly useful when dealing
 with lazy or dynamically loaded plugins::
 
@@ -385,7 +391,7 @@ different rules, which are stated here:
 Enforcing specifications
 ------------------------
 By default there is no strict requirement that each *hookimpl* has
-a corresponding *hookspec*, or vice-versa. However, if you'd like you enforce this
+a corresponding **hookspec**, or vice-versa. However, if you'd like you enforce this
 behavior you can invoke the following methods:
 
 :meth:`~aiopluggy.PluginManager.all_validated`:
@@ -481,7 +487,7 @@ More practically you call a *hook* like so:
     # we invoke the HookCaller and thus all underlying hookimpls
     result_list = pm.hook.myhook(config=config, args=sys.argv)
 
-Note that you **must** call hooks using `keyword_arguments` syntax!
+Note that you **must** call hooks using :term:`keyword argument` syntax!
 
 Hook implementations are called in LIFO registered order: *the last
 registered plugin's hooks are called first*. As an example, the below
@@ -527,6 +533,6 @@ result will have that result appended to a :class:`list` which is returned by
 the call.
 
 The only exception to this behaviour is if the hook has been marked to return
-its :ref:`first_notnone` in which case only the first single value (which is not
+its `first_notnone`_ in which case only the first single value (which is not
 ``None``) will be returned.
 

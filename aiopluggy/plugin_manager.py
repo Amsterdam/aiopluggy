@@ -174,9 +174,7 @@ class PluginManager(object):
                 ))
             else:
                 try:
-                    hookcaller._multicall_first_sync(
-                        kwargs, first_only=True, functions=[hookimpl]
-                    )
+                    hookcaller.replay(hookimpl, kwargs)
                 except Exception as e:
                     self.unhandled_exceptions.append((hookimpl, e))
         self.replay_to = {}

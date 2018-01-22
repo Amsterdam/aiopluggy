@@ -97,6 +97,11 @@ class HookCaller(object):
             if spec.is_sync \
             else self._multicall_async(kwargs)
 
+    def replay(self, function_, kwargs):
+        return self._multicall_first_sync(
+            kwargs, first_only=True, functions=[function_]
+        )
+
     async def _call_befores(self, caller_kwargs):
         async def call_befores(hookimpl_group):
             awaitables = []
@@ -225,12 +230,9 @@ class HookCaller(object):
         if functions is None:
             functions = self.functions
         self._call_befores_sync(caller_kwargs=caller_kwargs)
-        retval = []
         for hookimpl in reversed(functions):
             kwargs = hookimpl.filtered_args(caller_kwargs)
             result = hookimpl.function(**kwargs)
             if first_only or result is not None:
                 return result
         return None
-
-HookCaller.pm = HookCaller.plugin_manager

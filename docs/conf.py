@@ -25,6 +25,7 @@ from aiopluggy import VERSION
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinx.ext.autosectionlabel',
     'sphinx.ext.autodoc',
     'sphinx.ext.coverage',
     'sphinx.ext.doctest',
@@ -90,6 +91,8 @@ autodoc_mock_imports = ['aiohttp.web_exceptions']
 
 
 # -- Options for extensions -----------------------------------------------
+
+autosectionlabel_prefix_document = True
 
 # intersphinx_mapping = {
 #     'pytest': ('https://docs.pytest.org/en/latest/', 'pytest.inv'),

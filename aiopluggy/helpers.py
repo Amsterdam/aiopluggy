@@ -22,6 +22,7 @@ def fqn(namespace) -> str:
 
 class Result(object):
     def __init__(self, value=None, exc_info=None):
+        assert exc_info is None or exc_info[1] is not None
         self._value = value
         self._exc_info = exc_info
 
@@ -29,8 +30,10 @@ class Result(object):
     def value(self):
         """Get the result(s) for this hook call.
 
-        If the hook was marked as a ``firstresult`` only a single value
-        will be returned otherwise a list of results.
+        If the hook was marked as a :ref:`tutorial:first_notnone` or
+        :ref:`tutorial:first_only` only a single value will be returned
+        otherwise a list of results.
+
         """
         # __tracebackhide__ = True
         if self._exc_info is None:
@@ -43,3 +46,21 @@ class Result(object):
     def value(self, value):
         self._exc_info = None
         self._value = value
+
+    @property
+    def exc_info(self):
+        """Exception info.
+
+        :rtype: a tuple. See :func:`sys.exc_info` for details.
+
+        """
+        return self._exc_info
+
+    @property
+    def exception(self):
+        """Exception info.
+
+        :rtype: a tuple. See :func:`sys.exc_info` for details.
+
+        """
+        return self._exc_info[1] if self._exc_info else None
