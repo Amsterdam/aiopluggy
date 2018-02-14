@@ -4,4 +4,4 @@ from .plugin_manager import PluginManager
 from .helpers import Result
 
 
-VERSION = '0.1.5rc1'
+VERSION = '0.1.5rc2'

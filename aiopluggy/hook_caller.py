@@ -153,27 +153,24 @@ class HookCaller(object):
                 for hookimpl in reversed(hookimpl_group):
                     kwargs = hookimpl.filtered_args(caller_kwargs)
                     if hookimpl.is_async:
-                        awaitables.append(asyncio.ensure_future(
-                            hookimpl.function(**kwargs)
-                        ))
+                        awaitables.append(hookimpl.function(**kwargs))
                     else:
                         # noinspection PyBroadException
                         try:
                             retval.append(Result(hookimpl.function(**kwargs)))
                         except Exception:
                             retval.append(Result(exc_info=sys.exc_info()))
-                if len(awaitables) > 0:
-                    for f in asyncio.as_completed(awaitables):
-                        # noinspection PyBroadException
-                        try:
-                            retval.append(Result(await f))
-                        except Exception:
-                            retval.append(Result(exc_info=sys.exc_info()))
             except Exception:
                 for a in awaitables:
-                    if not a.done():
-                        a.cancel()
+                    asyncio.ensure_future(a).cancel()
                 raise
+            if len(awaitables) > 0:
+                for f in asyncio.as_completed(awaitables):
+                    # noinspection PyBroadException
+                    try:
+                        retval.append(Result(await f))
+                    except Exception:
+                        retval.append(Result(exc_info=sys.exc_info()))
 
         for group in _priority_groups(functions):
             await multicall_parallel(group)
